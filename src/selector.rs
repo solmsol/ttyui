@@ -40,9 +40,16 @@ impl DateTimeField {
 
 const DEFAULT_DATE_NAME: &str = "due date";
 
-//DateSelector represents the interactive selector interface for date or time.
+/// DateSelector represents the interactive selector interface for date or time.
+///
+/// ```rust
+/// use ttyui::selector::DateSelector;
+/// let mut d = DateSelector::new();
+/// d.select().unwrap();
+/// println!("selected date: {}", d.to_string());
+/// ```
 #[derive(Clone, Debug)]
-struct DateSelector {
+pub struct DateSelector {
     name: String,
     active_field: DateTimeField,
     pub has_time: bool,
@@ -191,9 +198,14 @@ impl DateSelector {
         self.date.clone()
     }
     pub fn select(&mut self) -> io::Result<&mut Self> {
-        self.term.clear_screen()?;
         loop {
-            write!(self.term, "{}: {}", self.get_name(), self.get_date())?;
+            self.term.clear_screen()?;
+            write!(
+                &self.term,
+                "{}: {}",
+                String::from(self.get_name()),
+                self.to_string()
+            )?;
             self.adjust()?;
 
             match self.term.read_key()? {
@@ -222,7 +234,10 @@ impl DateSelector {
 
 impl ToString for DateSelector {
     fn to_string(&self) -> String {
-        format!("{}: {}", self.name, self.date.format("%Y-%m-%d"))
+        match self.has_time {
+            true => format!("{}", self.date.format("%Y-%m-%d %H:%M:%S")),
+            false => format!("{}", self.date.format("%Y-%m-%d")),
+        }
     }
 }
 
