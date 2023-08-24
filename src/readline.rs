@@ -130,7 +130,7 @@ impl Buffer {
         Ok(Key::Enter)
     }
     fn home(&mut self) -> io::Result<Key> {
-        self.term.move_cursor_left(self.text.len())?;
+        self.term.move_cursor_left(self.index)?;
         self.index = 0;
         Ok(Key::Home)
     }
@@ -151,7 +151,9 @@ impl Buffer {
     fn backspace(&mut self) -> io::Result<Key> {
         if self.index > 0 {
             self.term.clear_line()?;
-            self.term.move_cursor_left(self.text.len())?;
+            self.term
+                .move_cursor_left(self.text.len() + self.prefix.len())?;
+            write!(&self.term, "{}", self.prefix)?;
             self.text.remove(self.index - 1);
             self.index -= 1;
             write!(&self.term, "{}", self.text)?;
