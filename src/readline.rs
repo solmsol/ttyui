@@ -27,6 +27,9 @@ use console::{Key, Term};
 use std::io;
 use std::io::Write;
 
+const MAX_PREFIX_CAPACITY: usize = 32;
+const DEFAULT_TEXT_CAPACITY: usize = 1024;
+
 /// Buffer of a readline instance.
 ///
 pub struct Buffer {
@@ -39,6 +42,8 @@ pub struct Buffer {
     term: Term,
     /// Cursor index for the next character input
     index: usize,
+    /// prefix string for the input area
+    prefix: String,
     /// Text payload for the buffer
     text: String,
 }
@@ -77,6 +82,7 @@ impl Clone for Buffer {
             terminate_on_up_down: self.terminate_on_up_down,
             term: self.term.clone(),
             index: self.index,
+            prefix: self.prefix.clone(),
             text: self.text.clone(),
         }
     }
@@ -92,7 +98,8 @@ impl Buffer {
             terminate_on_up_down: false,
             term: Term::stdout(),
             index: 0,
-            text: String::new(),
+            prefix: String::with_capacity(MAX_PREFIX_CAPACITY),
+            text: String::with_capacity(DEFAULT_TEXT_CAPACITY),
         }
     }
 
@@ -105,6 +112,7 @@ impl Buffer {
             terminate_on_up_down: false,
             term: Term::stdout(),
             index: 0,
+            prefix: String::with_capacity(MAX_PREFIX_CAPACITY),
             text: String::from(text),
         }
     }
@@ -123,11 +131,13 @@ impl Buffer {
     }
     fn home(&mut self) -> io::Result<Key> {
         self.term.move_cursor_left(self.text.len())?;
+        self.term.move_cursor_right(self.prefix.len())?;
         self.index = 0;
         Ok(Key::Home)
     }
     fn end(&mut self) -> io::Result<Key> {
-        self.term.move_cursor_right(self.text.len() - self.index)?;
+        self.term
+            .move_cursor_right(self.prefix.len() + self.text.len() - self.index)?;
         self.index = self.text.len();
         Ok(Key::End)
     }
@@ -273,6 +283,12 @@ impl Buffer {
         Ok(Key::ArrowRight)
     }
 
+    /// set prefix for the input area
+    pub fn set_prefix(&mut self, prefix: String) {
+        self.prefix.clear();
+        self.prefix = prefix;
+    }
+
     ///Buffer.read_line provides interactive line editing functionality for a tty, which supports following basic shortcut keys:
     ///
     /// * C-a (Home)
@@ -284,6 +300,7 @@ impl Buffer {
     pub fn read_line(&mut self) -> io::Result<Key> {
         let k: Key;
 
+        write!(&self.term, "{}", self.prefix)?;
         loop {
             match self.term.read_key()? {
                 Key::Enter => {
@@ -604,5 +621,14 @@ mod tests {
         let idx_init = b.index;
         b.left().unwrap();
         assert_eq!(b.index, idx_init);
+    }
+
+    #[test]
+    fn test_set_prefix() {
+        let mut b = init_with_word();
+        let data = "korekara";
+        assert_eq!(b.prefix.len(), 0);
+        b.set_prefix(data.to_string());
+        assert_eq!(b.prefix.len(), data.len());
     }
 }
