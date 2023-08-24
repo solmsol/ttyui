@@ -7,7 +7,7 @@ description = "A tiny set of helpers for terminal interactivity, including readl
 homepage = "https://github.com/g1eng/ttyui"
 repository = "https://github.com/g1eng/ttyui"
 readme = "README.md"
-documentation = "https://doc.rs/ttyui"
+documentation = "https://docs.rs/ttyui"
 keywords = ["cli"]
 categories = ["command-line-utilities", "development-tools::commandline-libraries"]
 
