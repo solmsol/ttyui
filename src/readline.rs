@@ -67,7 +67,7 @@ impl std::fmt::Debug for Buffer {
         f.debug_struct("Buffer")
             .field("debug", &self.debug)
             .field("double_line_response", &self.double_line_response)
-            .field("self.terminate_on_up_down", &self.terminate_on_up_down)
+            .field("terminate_on_up_down", &self.terminate_on_up_down)
             .field("index", &self.index)
             .field("text", &self.text);
         Ok(())
