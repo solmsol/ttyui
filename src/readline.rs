@@ -131,13 +131,11 @@ impl Buffer {
     }
     fn home(&mut self) -> io::Result<Key> {
         self.term.move_cursor_left(self.text.len())?;
-        self.term.move_cursor_right(self.prefix.len())?;
         self.index = 0;
         Ok(Key::Home)
     }
     fn end(&mut self) -> io::Result<Key> {
-        self.term
-            .move_cursor_right(self.prefix.len() + self.text.len() - self.index)?;
+        self.term.move_cursor_right(self.text.len() - self.index)?;
         self.index = self.text.len();
         Ok(Key::End)
     }
