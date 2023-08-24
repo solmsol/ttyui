@@ -3,10 +3,13 @@ name = "ttyui"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+description = "A tiny set of helpers for terminal interactivity, including readline, word selector and date selector."
+homepage = "https://github.com/g1eng/ttyui"
+repository = "https://github.com/g1eng/ttyui"
+readme = "README.md"
+documentation = "https://doc.rs/ttyui"
 keywords = ["cli"]
 categories = ["command-line-utilities", "development-tools::commandline-libraries"]
-repository = "https://github.com/g1eng/ttyui"
-documentation = "https://doc.rs/ttyui"
 
 [dependencies]
 chrono = "0.4.26"
