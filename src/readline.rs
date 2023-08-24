@@ -1,6 +1,6 @@
-//! readline is an alternative readline implementation.
-//! Using this module, you can easly embed a minimal line editor with
-//! Emacs-like shortcuts into your programs.
+//! An alternative readline implementation.
+//!
+//! This module realizes traditional line editor implementation with Emacs-like shortcuts.
 //!
 //! ```rust
 //! use std::env;
@@ -21,24 +21,25 @@
 //! );
 //!
 //! ```
+//!
+
 use console::{Key, Term};
 use std::io;
 use std::io::Write;
 
-/// The buffer of the readline instance, which stores data from stdin.
-/// Text payload is held in private field but extractable via ToString implementation.
-///
-/// * `double_line_response` represents whether the read_line method result newline-containing string at the index where an enter key has been pressed.
-/// * `self.terminate_on_up_down` represents whether the read_line method self.terminates or not when the ArrowUp or ArrowDown key is pressed.
-/// * `index` holds cursor index for the next character input
-/// * `text` holds text payload for the buffer
+/// Buffer of a readline instance.
 ///
 pub struct Buffer {
+    /// Debug mode or not.
     debug: bool,
+    /// Whether the read_line method result newline-containing string at the index where an enter key has been pressed.
     pub double_line_response: bool,
+    /// Whether the read_line method self.terminates or not when the ArrowUp or ArrowDown key is pressed.
     pub terminate_on_up_down: bool,
     term: Term,
+    /// Cursor index for the next character input
     index: usize,
+    /// Text payload for the buffer
     text: String,
 }
 
@@ -82,6 +83,8 @@ impl Clone for Buffer {
 }
 
 impl Buffer {
+    /// Generate blank buffer.
+    ///
     pub fn new() -> Self {
         Buffer {
             debug: false,
@@ -93,6 +96,8 @@ impl Buffer {
         }
     }
 
+    /// Generate buffer with initial text.
+    ///
     pub fn from(text: &str) -> Self {
         Buffer {
             debug: false,
@@ -104,7 +109,7 @@ impl Buffer {
         }
     }
 
-    ///switch on debug mode
+    /// Switch on debug mode
     ///
     pub fn debug(&mut self) {
         self.debug = true;
@@ -336,6 +341,7 @@ impl Buffer {
 /// use ttyui::readline::read_line;
 /// println!("\n\n[output]\n\x1b[33m{}\x1b[0m", read_line().unwrap());
 /// ```
+///
 pub fn read_line() -> io::Result<String> {
     let mut buf = Buffer::new();
     buf.read_line()?;

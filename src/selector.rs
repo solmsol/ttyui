@@ -1,10 +1,14 @@
+//! Various selectors for items, numbers, date and times.
+//!
+
 use std::io;
 use std::io::Write;
 
 use chrono::{DateTime, Days, Duration, Local, Months};
 use console::{Key, Term};
 
-// DateTimeField represents selector element for date and time.
+/// DateTimeField represents selector field for date and time.
+///
 #[derive(Clone, Eq, PartialEq, Debug)]
 enum DateTimeField {
     Day,
@@ -15,6 +19,8 @@ enum DateTimeField {
     Second,
 }
 
+/// The ring buffer implementation for date and time, especially for the order of fields.
+///
 impl DateTimeField {
     fn switch_prev(&mut self) -> Self {
         match self {
@@ -40,24 +46,42 @@ impl DateTimeField {
 
 const DEFAULT_DATE_NAME: &str = "due date";
 
-/// DateSelector represents the interactive selector interface for date or time.
+/// The interactive selector interface for date and time.
+///
+/// By default, `DateSelector::new()` returns a selector for **date**, NOT FOR **date** and **time**.
+/// If you want to select date and time with a selector, set DateSelector.has_time true
+/// before calling select() method.
+///
+/// An instance for the date selection must be mutable and the selected date (or datetime) can be
+/// extracted within different formats:
+///
+/// * DateSelector.get_date() -> `chrono::DateTime<Local>`
+/// * DateSelector.to_string() -> String
 ///
 /// ```rust
 /// use ttyui::selector::DateSelector;
 /// let mut d = DateSelector::new();
-/// d.select().unwrap();
-/// println!("selected date: {}", d.to_string());
+/// d.has_time = true;
+/// println!("selected: {}", d.select().unwrap().to_string());
 /// ```
+///
 #[derive(Clone, Debug)]
 pub struct DateSelector {
-    name: String,
-    active_field: DateTimeField,
+    /// date name for the selection
+    pub name: String,
+    /// whether the selector supports time selection or not
     pub has_time: bool,
+    /// active (on-cursor) field for the selection
+    active_field: DateTimeField,
+    /// selected date (datetime)
     date: DateTime<Local>,
+    /// terminal instance for reference
     term: Term,
 }
 
 impl DateSelector {
+    /// Generate selector instance with current date/time
+    ///
     pub fn new() -> Self {
         Self {
             name: DEFAULT_DATE_NAME.to_string(),
@@ -68,6 +92,8 @@ impl DateSelector {
         }
     }
 
+    /// Generate selector instance with initial date
+    ///
     pub fn from(date: DateTime<Local>) -> Self {
         Self {
             name: DEFAULT_DATE_NAME.to_string(),
@@ -78,15 +104,18 @@ impl DateSelector {
         }
     }
 
-    pub fn set_title(&mut self, name: &str) {
-        self.name = name.to_string();
-    }
-
+    /// Set date, not interactively.
+    ///
     pub fn set_date(&mut self, date: DateTime<Local>) {
         self.date = date;
     }
 
-    pub fn is_out_of_field(&self) -> bool {
+    /// This method detects whether the instance supports the field under the cursor.
+    ///
+    /// If the instance has no time range support, (but supports date only), it returns
+    /// true for time ranges (Hour | Minute | Second) selected.
+    ///
+    fn is_out_of_field(&self) -> bool {
         match &self.has_time {
             true => false,
             false => match self.active_field {
@@ -96,6 +125,8 @@ impl DateSelector {
         }
     }
 
+    /// Move left for ring-bufferish selection field.
+    ///
     pub fn left(&mut self) -> io::Result<()> {
         self.active_field = self.active_field.switch_prev();
         if self.is_out_of_field() {
@@ -104,6 +135,9 @@ impl DateSelector {
         self.adjust()?;
         Ok(())
     }
+
+    /// Move right for ring-bufferish selection field.
+    ///
     pub fn right(&mut self) -> io::Result<()> {
         self.active_field = self.active_field.switch_next();
         if self.is_out_of_field() {
@@ -112,6 +146,9 @@ impl DateSelector {
         self.adjust()?;
         Ok(())
     }
+
+    /// Adjust cursor position before selection, after date characters written.
+    ///
     fn adjust(&self) -> io::Result<()> {
         let msg_len = self.to_string().len();
         self.term.move_cursor_left(msg_len)?;
@@ -125,6 +162,9 @@ impl DateSelector {
         };
         Ok(())
     }
+
+    /// Increment a value under the cursor.
+    ///
     pub fn up(&mut self) -> io::Result<()> {
         match &self.active_field {
             DateTimeField::Year => {
@@ -158,6 +198,9 @@ impl DateSelector {
         };
         Ok(())
     }
+
+    /// Decrement a value under the cursor.
+    ///
     pub fn down(&mut self) -> io::Result<()> {
         match &self.active_field {
             DateTimeField::Year => {
@@ -191,21 +234,26 @@ impl DateSelector {
         };
         Ok(())
     }
-    pub fn get_name(&self) -> String {
-        self.name.clone()
-    }
+
+    /// Return selected date.
+    ///
     pub fn get_date(&self) -> DateTime<Local> {
         self.date.clone()
     }
+
+    /// Select date interactively.
+    ///
+    /// ```rust
+    /// use ttyui::selector::DateSelector;
+    /// let mut d = DateSelector::new();
+    /// d.has_time = true;
+    /// println!("selected: {}", d.select().unwrap().to_string());
+    /// ```
+    ///
     pub fn select(&mut self) -> io::Result<&mut Self> {
         loop {
             self.term.clear_screen()?;
-            write!(
-                &self.term,
-                "{}: {}",
-                String::from(self.get_name()),
-                self.to_string()
-            )?;
+            write!(&self.term, "{}: {}", self.name, self.to_string())?;
             self.adjust()?;
 
             match self.term.read_key()? {
@@ -241,6 +289,15 @@ impl ToString for DateSelector {
     }
 }
 
+/// Select date with default conditions
+///
+pub fn select_date(initial_date: DateTime<Local>) -> io::Result<DateTime<Local>> {
+    // println!("input {:?}", initial_date);
+    Ok(DateSelector::from(initial_date).select()?.get_date())
+}
+
+/// Select date with time range
+///
 pub fn select_datetime(initial_date: DateTime<Local>) -> io::Result<DateTime<Local>> {
     // println!("input {:?}", initial_date);
     let mut t = DateSelector::from(initial_date);
@@ -248,11 +305,33 @@ pub fn select_datetime(initial_date: DateTime<Local>) -> io::Result<DateTime<Loc
     Ok(t.select()?.get_date())
 }
 
-pub fn select_date(initial_date: DateTime<Local>) -> io::Result<DateTime<Local>> {
-    // println!("input {:?}", initial_date);
-    Ok(DateSelector::from(initial_date).select()?.get_date())
+/// Select date with custom date title
+///
+pub fn select_date_with_title(
+    initial_date: DateTime<Local>,
+    title: &str,
+) -> io::Result<DateTime<Local>> {
+    let mut t = DateSelector::from(initial_date);
+    t.has_time = false;
+    t.name = title.to_string();
+    Ok(t.select()?.get_date())
 }
 
+/// Select date with time range and custom date title
+///
+pub fn select_datetime_with_title(
+    initial_date: DateTime<Local>,
+    title: &str,
+) -> io::Result<DateTime<Local>> {
+    // println!("input {:?}", initial_date);
+    let mut t = DateSelector::from(initial_date);
+    t.has_time = true;
+    t.name = title.to_string();
+    Ok(t.select()?.get_date())
+}
+
+/// A traditional selector to tell user something and requests `y` or `n`.
+///
 pub fn ask_yes_no(question_msg: &str) -> io::Result<bool> {
     let mut term = Term::stdout();
     let mut msg = format!("{}: ", question_msg);
@@ -279,14 +358,28 @@ pub fn ask_yes_no(question_msg: &str) -> io::Result<bool> {
     }
 }
 
-/// select_word_from_words provides word selection interface for a slice of words.
-/// This method returns selected word or "" when quit with Q or Escape key.
+/// Item selection interface for a slice of descriptions.
 ///
-pub fn select_word_from_words(description: &str, words: &[&str]) -> io::Result<String> {
+/// This method returns a selected line with new String literal, or io::Error::Other for `Q` or escape key pressed.
+///
+/// ```rust
+/// use ttyui::selector::select_word_from_words;
+///
+/// let animals = [
+///     "Elephant",
+///     "Horse",
+///     "Whale",
+///     "Tiger",
+///     "Panda",
+/// ];
+/// println!("selected: {}",select_word_from_words("your favorite animal", &animals).unwrap());
+/// ```
+
+pub fn select_word_from_words(description: &str, items: &[&str]) -> io::Result<String> {
     let term = Term::stdout();
     term.clear_line()?;
     let mut seq = 0;
-    let word_count = words.len();
+    let word_count = items.len();
     let mut table: Vec<&str> = Vec::with_capacity(word_count);
     table.push("\x1b[32m*\x1b[0m");
     for _ in 0..word_count - 1 {
@@ -296,7 +389,7 @@ pub fn select_word_from_words(description: &str, words: &[&str]) -> io::Result<S
         term.clear_screen()?;
         term.write_line(description)?;
         for i in 0..word_count {
-            write!(&term, "{} {}", table[i], words[i])?;
+            write!(&term, "{} {}\n", table[i], items[i])?;
         }
         seq = match term.read_key().unwrap() {
             Key::ArrowUp | Key::Char('k') => {
@@ -319,7 +412,7 @@ pub fn select_word_from_words(description: &str, words: &[&str]) -> io::Result<S
             }
             Key::Enter => {
                 term.clear_screen()?;
-                return Ok(String::from(words[seq]));
+                return Ok(String::from(items[seq]));
             }
             _ => seq,
         };
@@ -333,17 +426,6 @@ pub fn select_word_from_words(description: &str, words: &[&str]) -> io::Result<S
         }
     }
 }
-// #[cfg(test)]
-// mod word_selector_tests {
-//     use crate::selector::*;
-//
-//     const DUMMY_WORDS: [&str; 5] = ["asa", "ishi", "usu", "ese", "OSO"];
-//
-//     #[test]
-//     fn s() {
-//         select_word_from_words("ko", &DUMMY_WORDS).unwrap();
-//     }
-// }
 
 #[cfg(test)]
 mod date_selector_tests {
@@ -488,13 +570,6 @@ mod date_selector_tests {
         t.right().unwrap();
         t.down().unwrap();
         assert_eq!(t.get_date(), s.get_date() - Months::new(12))
-    }
-
-    #[test]
-    fn test_date_set_get_name() {
-        let mut t = date_init().0;
-        t.set_title("ok");
-        assert_eq!(t.get_name(), "ok")
     }
 
     #[test]
